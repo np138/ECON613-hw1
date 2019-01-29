@@ -1,0 +1,459 @@
+---
+title: "ECON 613 Aassignment 1"
+author: Nond Prueksiri
+output: pdf_document
+---
+\fontsize{10}{10}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Importing Data
+```{r importing data}
+  rm(list = ls())
+
+  datstu <- read.csv("C:/Users/nprue/Desktop/econ613/datstu.csv")
+  datsss <- read.csv("C:/Users/nprue/Desktop/econ613/datsss.csv")
+  datjss <- read.csv("C:/Users/nprue/Desktop/econ613/datjss.csv")
+```
+
+## Excercise 1  Missing Data
+- Number of Students
+```{r no. of students}
+  # Assuming each obervation represents each students
+    length(unique(datstu$X))
+```
+
+- Number of Schools
+```{r no. of schools}
+  # Eliminate missing data
+    datsssA <- datsss[!(is.na(datsss$schoolname)
+                        |is.na(datsss$schoolcode)
+                        |is.na(datsss$sssdistrict)
+                        |is.na(datsss$ssslong)
+                        |is.na(datsss$ssslat)),]
+  # Eliminate duplicated schoolcode
+    datsssB <- datsssA[!(duplicated(datsssA$schoolcode)),]
+  # Report the number of schools
+    length(datsssB$schoolcode)
+```
+
+- Number of programs
+``` {r no. of programs}
+  # Clean out missing programs
+    datstuA <- datstu[!(is.na(datstu[11])
+                       |is.na(datstu[12]) 
+                       |is.na(datstu[13])
+                       |is.na(datstu[14]) 
+                       |is.na(datstu[15])
+                       |is.na(datstu[16])),]
+  # Report the number of programs
+    length(unique(unlist(datstuA[,11:16])))
+```
+
+- Number of Choices (School, Program)
+``` {r no. of choices}
+
+  # Clean out missing school choices
+    datstuB <- datstuA[!(is.na(datstuA[5])
+                       |is.na(datstuA[6]) 
+                       |is.na(datstuA[7])
+                       |is.na(datstuA[8]) 
+                       |is.na(datstuA[9])
+                       |is.na(datstuA[10])),]
+
+  # Combine school and program choices, keep only unique ones
+    datstuB$choice1 <- paste(datstuB[,5],"-" , datstuB[,11])
+    datstuB$choice2 <- paste(datstuB[,6],"-" , datstuB[,12])
+    datstuB$choice3 <- paste(datstuB[,7],"-" , datstuB[,13])
+    datstuB$choice4 <- paste(datstuB[,8],"-" , datstuB[,14])
+    datstuB$choice5 <- paste(datstuB[,9],"-" , datstuB[,15])
+    datstuB$choice6 <- paste(datstuB[,10],"-" , datstuB[,16])
+  
+  # Report the number of program choices (school, program)
+    length(unique(unlist(datstuB[,19:24])))
+```
+
+- Missing Test Score
+``` {r missing test score}
+  # Create missing score vector
+  missing <- datstu[is.na(datstu$score), ]
+  length(missing$X)
+```
+
+- Number of students applying to the same school
+
+Who has the repeated schools with in her choices....
+``` {r same school}
+  # Create a logical column (TRUE = at least has one repeat) 
+  datstu$sameschool <-  (datstu$schoolcode1 == datstu$schoolcode2 
+                      | datstu$schoolcode1 == datstu$schoolcode3 
+                      | datstu$schoolcode1 == datstu$schoolcode4 
+                      | datstu$schoolcode1 == datstu$schoolcode5 
+                      | datstu$schoolcode2 == datstu$schoolcode3 
+                      | datstu$schoolcode2 == datstu$schoolcode4 
+                      | datstu$schoolcode2 == datstu$schoolcode5 
+                      | datstu$schoolcode3 == datstu$schoolcode4 
+                      | datstu$schoolcode3 == datstu$schoolcode5 
+                      | datstu$schoolcode4 == datstu$schoolcode5)
+
+  # Return the number
+  nrow(datstu[datstu$sameschool == 'TRUE',])
+``` 
+  
+Who has applied to only one school....
+``` {r same school 2} 
+  # Create a logical column (TRUE = only one school) 
+  datstu$oneschool <- (is.na(datstu$schoolcode2) 
+                      | datstu$schoolcode1 == datstu$schoolcode2) & (is.na(datstu$schoolcode3) 
+                      | datstu$schoolcode1 == datstu$schoolcode3) & (is.na(datstu$schoolcode4) 
+                      | datstu$schoolcode1 == datstu$schoolcode4) & (is.na(datstu$schoolcode5) 
+                      | datstu$schoolcode1 == datstu$schoolcode5) & (is.na(datstu$schoolcode6) 
+                      | datstu$schoolcode1 == datstu$schoolcode6)
+  
+  # Return the number
+  nrow(datstu[datstu$oneschool == 'TRUE',])
+```
+
+- Number of students applying less than 6 choices
+``` {r less than 6} 
+  # Create a logical column (TRUE = below 6 choices) 
+  datstu$belowSix <- (is.na(datstu$schoolcode1) | is.na(datstu$schoolcode2) | is.na(datstu$schoolcode3) 
+                    |is.na(datstu$schoolcode4) | is.na(datstu$schoolcode5) | is.na(datstu$schoolcode6))
+
+  # Return the number
+  nrow(datstu[datstu$belowSix == 'TRUE',])
+```
+
+## Excercise 2 Data
+
+```{r create data , echo=TRUE, include = TRUE}
+    library(data.table)
+  # Remove unused data
+  rm(datstuA, datstuB, datsssA, datsssB, missing)
+  datadmit <- datstu[ , 1:18]
+  # Remove invalid rankplace, i.e., NA and 99  
+  datadmit <- datadmit[!(is.na(datadmit$rankplace) | datadmit$rankplace == 99), ]
+    
+  # Create variable "schoolcode" = school that a student is placed into
+  datadmit$schoolcode <- NA
+  datadmit$schoolcode[which(datadmit$rankplace == 1)] <- datadmit$schoolcode1[which(datadmit$rankplace == 1)]
+  datadmit$schoolcode[which(datadmit$rankplace == 2)] <- datadmit$schoolcode2[which(datadmit$rankplace == 2)]
+  datadmit$schoolcode[which(datadmit$rankplace == 3)] <- datadmit$schoolcode3[which(datadmit$rankplace == 3)]
+  datadmit$schoolcode[which(datadmit$rankplace == 4)] <- datadmit$schoolcode4[which(datadmit$rankplace == 4)]
+  datadmit$schoolcode[which(datadmit$rankplace == 5)] <- datadmit$schoolcode5[which(datadmit$rankplace == 5)]
+  datadmit$schoolcode[which(datadmit$rankplace == 6)] <- datadmit$schoolcode6[which(datadmit$rankplace == 6)]
+  
+  # Create variable "adprog" = program that a student is placed into
+    datadmit$adprog <- NA
+    datadmit$adprog[which(datadmit$rankplace == 1)] <- as.character(datadmit$choicepgm1[which(datadmit$rankplace == 1)])
+    datadmit$adprog[which(datadmit$rankplace == 2)] <- as.character(datadmit$choicepgm2[which(datadmit$rankplace == 2)])
+    datadmit$adprog[which(datadmit$rankplace == 3)] <- as.character(datadmit$choicepgm3[which(datadmit$rankplace == 3)])
+    datadmit$adprog[which(datadmit$rankplace == 4)] <- as.character(datadmit$choicepgm4[which(datadmit$rankplace == 4)])
+    datadmit$adprog[which(datadmit$rankplace == 5)] <- as.character(datadmit$choicepgm5[which(datadmit$rankplace == 5)])
+    datadmit$adprog[which(datadmit$rankplace == 6)] <- as.character(datadmit$choicepgm6[which(datadmit$rankplace == 6)])
+  
+
+  # Eliminate missing data
+    datsss <- datsss[!(is.na(datsss$schoolname)
+                        |is.na(datsss$schoolcode)
+                        |is.na(datsss$sssdistrict)
+                        |is.na(datsss$ssslong)
+                        |is.na(datsss$ssslat)),]
+    
+  # Eliminate duplicated schoolcode
+    datsss <- datsss[!(duplicated(datsss$schoolcode)),]
+  
+  # Merge with datsss for sssdistrict, ssslong, ssslat by schoolcode
+   ssdat <- merge(datadmit,datsss, by = "schoolcode", all.x = TRUE)
+  
+  # Create variable size, quality, size
+  size <- rep(1,nrow(ssdat))
+  ssdat <- data.table(ssdat)
+  ssdat <- ssdat[, list(quality=mean(score), cutoff=min(score), size = sum(size)), by=c("schoolcode","adprog", "schoolname", "sssdistrict","ssslong","ssslat")]
+  
+  # Here is the data requied by the exercise
+  summary(ssdat)
+```
+
+## Excercise 3 Distance
+
+```{r distance, echo=TRUE, include=TRUE}
+
+  # Prepare location of junior high schools
+  jssloc <- datjss[,2:4]
+  colnames(jssloc) <- c("jssdistrict","jsslong", "jsslat")
+
+  # Merge JSS locations with choices(school,program) in the cleaned datstu data and drop 'NA' district
+  datadmit <- merge(datadmit,jssloc, by = "jssdistrict", all.x = TRUE)
+  datadmit <- datadmit[!is.na(datadmit$jsslat),]
+  
+  # Prepare location of high schools, collapse each school using unique()
+  sssloc <- unique(ssdat[,c("schoolcode","ssslong", "ssslat")])
+  
+  # Merge location of high school,then, calculate the distance from given formular.
+  # Repeat them by choice, i.e., choice1, ... , choice6
+  colnames(sssloc) <- c("schoolcode1", "ssslong1", "ssslat1")
+  datadmit <- merge(datadmit,sssloc, by ="schoolcode1", all.x = TRUE)
+  datadmit <- datadmit[!is.na(datadmit$ssslat1),]
+  dist1 <- sqrt(((69.172*(datadmit$ssslong1-datadmit$jsslong))*cos(datadmit$jsslat/57.3))^2 + (69.172*(datadmit$ssslat1-datadmit$jsslat))^2)
+  datadmit <- cbind(datadmit, dist1) 
+  
+  colnames(sssloc) <- c("schoolcode2", "ssslong2", "ssslat2")
+  datadmit <- merge(datadmit,sssloc, by ="schoolcode2", all.x = TRUE)
+  datadmit <- datadmit[!is.na(datadmit$ssslat2),]
+  dist2 <- sqrt(((69.172*(datadmit$ssslong2-datadmit$jsslong))*cos(datadmit$jsslat/57.3))^2 + (69.172*(datadmit$ssslat2-datadmit$jsslat))^2)
+  datadmit <- cbind(datadmit, dist2) 
+  
+  colnames(sssloc) <- c("schoolcode3", "ssslong3", "ssslat3")
+  datadmit <- merge(datadmit,sssloc, by ="schoolcode3", all.x = TRUE)
+  datadmit <- datadmit[!is.na(datadmit$ssslat3),]
+  dist3 <- sqrt(((69.172*(datadmit$ssslong3-datadmit$jsslong))*cos(datadmit$jsslat/57.3))^2 + (69.172*(datadmit$ssslat3-datadmit$jsslat))^2)
+  datadmit <- cbind(datadmit, dist3) 
+  
+  colnames(sssloc) <- c("schoolcode4", "ssslong4", "ssslat4")
+  datadmit <- merge(datadmit,sssloc, by ="schoolcode4", all.x = TRUE)
+  datadmit <- datadmit[!is.na(datadmit$ssslat4),]
+  dist4 <- sqrt(((69.172*(datadmit$ssslong4-datadmit$jsslong))*cos(datadmit$jsslat/57.3))^2 + (69.172*(datadmit$ssslat4-datadmit$jsslat))^2)
+  datadmit <- cbind(datadmit, dist4) 
+  
+  colnames(sssloc) <- c("schoolcode5", "ssslong5", "ssslat5")
+  datadmit <- merge(datadmit,sssloc, by ="schoolcode5", all.x = TRUE)
+  datadmit <- datadmit[!is.na(datadmit$ssslat5),]
+  dist5 <- sqrt(((69.172*(datadmit$ssslong5-datadmit$jsslong))*cos(datadmit$jsslat/57.3))^2 + (69.172*(datadmit$ssslat5-datadmit$jsslat))^2)
+  datadmit <- cbind(datadmit, dist5) 
+  
+  colnames(sssloc) <- c("schoolcode6", "ssslong6", "ssslat6")
+  datadmit <- merge(datadmit,sssloc, by ="schoolcode6", all.x = TRUE)
+  datadmit <- datadmit[!is.na(datadmit$ssslat6),]
+  dist6 <- sqrt(((69.172*(datadmit$ssslong6-datadmit$jsslong))*cos(datadmit$jsslat/57.3))^2 + (69.172*(datadmit$ssslat6-datadmit$jsslat))^2)
+  datadmit <- cbind(datadmit, dist6) 
+  
+  # The Summary of required data
+  summary(datadmit)
+```
+
+# Exercise 4 Descriptive Characteristics 
+
+```{r discriptive, echo=TRUE, include=TRUE}
+  # Remove unused values
+  rm(dist1, dist2, dist3, dist4, dist5, dist6)
+  
+  # merge variable "cutoff" and "quality" to original data by choices [1:6]
+  ssdat <- ssdat[, c("schoolcode","adprog","cutoff","quality")]  
+  colnames(ssdat) <- c("schoolcode1","choicepgm1","cutoff1","quality1")
+  datadmit <- merge(datadmit,ssdat, by = c("schoolcode1","choicepgm1"), all.x = TRUE)
+
+  colnames(ssdat) <- c("schoolcode2","choicepgm2","cutoff2","quality2")
+  datadmit <- merge(datadmit,ssdat, by = c("schoolcode2","choicepgm2"), all.x = TRUE)
+
+  colnames(ssdat) <- c("schoolcode3","choicepgm3","cutoff3","quality3")
+  datadmit <- merge(datadmit,ssdat, by = c("schoolcode3","choicepgm3"), all.x = TRUE)
+
+  colnames(ssdat) <- c("schoolcode4","choicepgm4","cutoff4","quality4")
+  datadmit <- merge(datadmit,ssdat, by = c("schoolcode4","choicepgm4"), all.x = TRUE)
+
+  colnames(ssdat) <- c("schoolcode5","choicepgm5","cutoff5","quality5")
+  datadmit <- merge(datadmit,ssdat, by = c("schoolcode5","choicepgm5"), all.x = TRUE)
+
+  colnames(ssdat) <- c("schoolcode6","choicepgm6","cutoff6","quality6")
+  datadmit <- merge(datadmit,ssdat, by = c("schoolcode6","choicepgm6"), all.x = TRUE)
+
+# Calculate mean and sd of "Cutoff", "Quality" and "Distance"
+result <- data.frame("Choice1", "Choice2", "Choice3", "Choice4", "Choice5", "Choice6")
+
+xcutoff <- c(mean(as.numeric(datadmit$cutoff1), na.rm=TRUE),
+             mean(as.numeric(datadmit$cutoff2), na.rm=TRUE),
+             mean(as.numeric(datadmit$cutoff3), na.rm=TRUE),
+             mean(as.numeric(datadmit$cutoff4), na.rm=TRUE),
+             mean(as.numeric(datadmit$cutoff5), na.rm=TRUE),
+             mean(as.numeric(datadmit$cutoff6), na.rm=TRUE)
+             )
+
+sdcutoff <- c(sd(as.numeric(datadmit$cutoff1), na.rm=TRUE),
+             sd(as.numeric(datadmit$cutoff2), na.rm=TRUE),
+             sd(as.numeric(datadmit$cutoff3), na.rm=TRUE),
+             sd(as.numeric(datadmit$cutoff4), na.rm=TRUE),
+             sd(as.numeric(datadmit$cutoff5), na.rm=TRUE),
+             sd(as.numeric(datadmit$cutoff6), na.rm=TRUE)
+             )
+
+xquality <- c(mean(as.numeric(datadmit$quality1), na.rm=TRUE),
+             mean(as.numeric(datadmit$quality2), na.rm=TRUE),
+             mean(as.numeric(datadmit$quality3), na.rm=TRUE),
+             mean(as.numeric(datadmit$quality4), na.rm=TRUE),
+             mean(as.numeric(datadmit$quality5), na.rm=TRUE),
+             mean(as.numeric(datadmit$quality6), na.rm=TRUE)
+             )
+
+sdquality  <- c(sd(as.numeric(datadmit$quality1), na.rm=TRUE),
+             sd(as.numeric(datadmit$quality2), na.rm=TRUE),
+             sd(as.numeric(datadmit$quality3), na.rm=TRUE),
+             sd(as.numeric(datadmit$quality4), na.rm=TRUE),
+             sd(as.numeric(datadmit$quality5), na.rm=TRUE),
+             sd(as.numeric(datadmit$quality6), na.rm=TRUE)
+             )
+
+xdistance <- c(mean(as.numeric(datadmit$dist1), na.rm=TRUE),
+             mean(as.numeric(datadmit$dist2), na.rm=TRUE),
+             mean(as.numeric(datadmit$dist3), na.rm=TRUE),
+             mean(as.numeric(datadmit$dist4), na.rm=TRUE),
+             mean(as.numeric(datadmit$dist5), na.rm=TRUE),
+             mean(as.numeric(datadmit$dist6), na.rm=TRUE)
+             )
+
+sddistance  <- c(sd(as.numeric(datadmit$dist1), na.rm=TRUE),
+             sd(as.numeric(datadmit$dist2), na.rm=TRUE),
+             sd(as.numeric(datadmit$dist3), na.rm=TRUE),
+             sd(as.numeric(datadmit$dist4), na.rm=TRUE),
+             sd(as.numeric(datadmit$dist5), na.rm=TRUE),
+             sd(as.numeric(datadmit$dist6), na.rm=TRUE)
+             )
+result <- rbind(xcutoff, sdcutoff, xquality, sdquality, xdistance, sddistance)
+colnames(result) <- c("Choice1", "Choice2", "Choice3", "Choice4", "Choice5", "Choice6")
+result
+```
+
+
+```{r discriptive2, echo=TRUE, include=TRUE}
+# Divide student into quartile according to her score
+summary(datadmit$score)
+datadmit$stQr <- NA
+datadmit$stQr[which(datadmit$score < 256)] <- 1
+datadmit$stQr[which(datadmit$score >= 256 & datadmit$score < 288)] <- 2
+datadmit$stQr[which(datadmit$score >= 288 & datadmit$score < 329)] <- 3
+datadmit$stQr[which(datadmit$score >= 329)] <- 4
+
+# Calculate descriptive statistics 
+rm(quartile, qdata)
+quartile <- data.frame("Choice1", "Choice2", "Choice3", "Choice4", "Choice5", "Choice6")
+frow <- c(0,0,0,0,0,0)
+quartile <- rbind(frow)
+
+for (i in 1:4) {
+  qdata <- datadmit[which(datadmit$stQr == i), ]
+
+  qxcutoff <- c(mean(as.numeric(qdata$cutoff1), na.rm=TRUE),
+             mean(as.numeric(qdata$cutoff2), na.rm=TRUE),
+             mean(as.numeric(qdata$cutoff3), na.rm=TRUE),
+             mean(as.numeric(qdata$cutoff4), na.rm=TRUE),
+             mean(as.numeric(qdata$cutoff5), na.rm=TRUE),
+             mean(as.numeric(qdata$cutoff6), na.rm=TRUE)
+             )
+
+  qsdcutoff <- c(sd(as.numeric(qdata$cutoff1), na.rm=TRUE),
+             sd(as.numeric(qdata$cutoff2), na.rm=TRUE),
+             sd(as.numeric(qdata$cutoff3), na.rm=TRUE),
+             sd(as.numeric(qdata$cutoff4), na.rm=TRUE),
+             sd(as.numeric(qdata$cutoff5), na.rm=TRUE),
+             sd(as.numeric(qdata$cutoff6), na.rm=TRUE)
+             )
+
+  qxquality <- c(mean(as.numeric(qdata$quality1), na.rm=TRUE),
+             mean(as.numeric(qdata$quality2), na.rm=TRUE),
+             mean(as.numeric(qdata$quality3), na.rm=TRUE),
+             mean(as.numeric(qdata$quality4), na.rm=TRUE),
+             mean(as.numeric(qdata$quality5), na.rm=TRUE),
+             mean(as.numeric(qdata$quality6), na.rm=TRUE)
+             )
+
+  qsdquality  <- c(sd(as.numeric(qdata$quality1), na.rm=TRUE),
+             sd(as.numeric(qdata$quality2), na.rm=TRUE),
+             sd(as.numeric(qdata$quality3), na.rm=TRUE),
+             sd(as.numeric(qdata$quality4), na.rm=TRUE),
+             sd(as.numeric(qdata$quality5), na.rm=TRUE),
+             sd(as.numeric(qdata$quality6), na.rm=TRUE)
+             )
+
+  qxdistance <- c(mean(as.numeric(qdata$dist1), na.rm=TRUE),
+             mean(as.numeric(qdata$dist2), na.rm=TRUE),
+             mean(as.numeric(qdata$dist3), na.rm=TRUE),
+             mean(as.numeric(qdata$dist4), na.rm=TRUE),
+             mean(as.numeric(qdata$dist5), na.rm=TRUE),
+             mean(as.numeric(datadmit$dist6), na.rm=TRUE)
+             )
+
+  qsddistance  <- c(sd(as.numeric(qdata$dist1), na.rm=TRUE),
+             sd(as.numeric(qdata$dist2), na.rm=TRUE),
+             sd(as.numeric(qdata$dist3), na.rm=TRUE),
+             sd(as.numeric(qdata$dist4), na.rm=TRUE),
+             sd(as.numeric(qdata$dist5), na.rm=TRUE),
+             sd(as.numeric(qdata$dist6), na.rm=TRUE)
+             )
+  
+ quartile <- rbind(quartile, qxcutoff, qsdcutoff, qxquality, qsdquality, qxdistance, qsddistance)
+ rm(qxcutoff, qsdcutoff, qxquality, qsdquality, qxdistance, qsddistance)
+}
+
+quartile <- quartile[-1,]
+row.names(quartile)<- c("mean.cut.q1", "sd.cut.q1", "mean.qual.q1", "sd.qual.q1","mean.dist.q1","sd.dist.q1",
+                          "mean.cut.q2", "sd.cut.q2", "mean.qual.q2", "sd.qual.q2","mean.dist.q2","sd.dist.q2",
+                          "mean.cut.q3", "sd.cut.q3", "mean.qual.q3", "sd.qual.q3","mean.dist.q3","sd.dist.q3",
+                          "mean.cut.q4", "sd.cut.q4", "mean.qual.q4", "sd.qual.q4","mean.dist.q4","sd.dist.q4"
+                          )
+colnames(quartile) <- c("Choice1", "Choice2", "Choice3", "Choice4", "Choice5", "Choice6")
+#Print result
+quartile
+
+
+```
+
+# Exercise 5 Diversification
+
+``` {r Q5, echo=TRUE, include=TRUE}
+
+  # Create deciles for choices(school,program) by "cutoff" 
+  quantile(ssdat$cutoff6, c(.1, .2, .3, .4, .5, .6, .7, .8, .9))
+  ssdat$deci <- NA
+  ssdat$deci[which(ssdat$cutoff6 < 207)] <- 1
+  ssdat$deci[which(ssdat$cutoff6 >= 207 & ssdat$cutoff6 < 212)] <- 2
+  ssdat$deci[which(ssdat$cutoff6 >= 212 & ssdat$cutoff6 < 218)] <- 3
+  ssdat$deci[which(ssdat$cutoff6 >= 218 & ssdat$cutoff6 < 226)] <- 4
+  ssdat$deci[which(ssdat$cutoff6 >= 226 & ssdat$cutoff6 < 240)] <- 5
+  ssdat$deci[which(ssdat$cutoff6 >= 240 & ssdat$cutoff6 < 256)] <- 6
+  ssdat$deci[which(ssdat$cutoff6 >= 256 & ssdat$cutoff6 < 275)] <- 7
+  ssdat$deci[which(ssdat$cutoff6 >= 275 & ssdat$cutoff6 < 298)] <- 8
+  ssdat$deci[which(ssdat$cutoff6 >= 298 & ssdat$cutoff6 < 335)] <- 9
+  ssdat$deci[which(ssdat$cutoff6 >= 335)] <- 10
+
+  # Assign value of decile to each choice
+  ssdat <- ssdat[,-3:-4]
+  colnames(ssdat) <- c("schoolcode1","choicepgm1","deci1")
+  datadmit <- merge(datadmit,ssdat, by = c("schoolcode1","choicepgm1"), all.x = TRUE)
+
+  colnames(ssdat) <- c("schoolcode2","choicepgm2","deci2")
+  datadmit <- merge(datadmit,ssdat, by = c("schoolcode2","choicepgm2"), all.x = TRUE)
+
+  colnames(ssdat) <- c("schoolcode3","choicepgm3","deci3")
+  datadmit <- merge(datadmit,ssdat, by = c("schoolcode3","choicepgm3"), all.x = TRUE)
+  
+  colnames(ssdat) <- c("schoolcode4","choicepgm4","deci4")
+  datadmit <- merge(datadmit,ssdat, by = c("schoolcode4","choicepgm4"), all.x = TRUE)
+  
+  colnames(ssdat) <- c("schoolcode5","choicepgm5","deci5")
+  datadmit <- merge(datadmit,ssdat, by = c("schoolcode5","choicepgm5"), all.x = TRUE)
+  
+  colnames(ssdat) <- c("schoolcode6","choicepgm6","deci6")
+  datadmit <- merge(datadmit,ssdat, by = c("schoolcode6","choicepgm6"), all.x = TRUE)
+
+  # Calculate the number of unique group within the application  
+totgroup <- datadmit[,54:59]
+totgroup$ngroup <- apply(totgroup, 1, function(x)length(unique(x)) )
+datadmit <- merge(datadmit,totgroup, by =c("deci1", "deci2", "deci3", "deci4" , "deci5" , "deci6"), all.x = TRUE)  
+summary(datadmit$ngroup)
+
+```
+
+
+``` {r Q5.2, echo=TRUE, include=TRUE}
+  # Calculate the number of unique group within the application by student's score quartile
+ngroup1 <- summary(datadmit$ngroup[which(datadmit$stQr ==1)])
+ngroup2 <- summary(datadmit$ngroup[which(datadmit$stQr ==2)])
+ngroup3 <- summary(datadmit$ngroup[which(datadmit$stQr ==3)])
+ngroup4 <- summary(datadmit$ngroup[which(datadmit$stQr ==4)])
+sumngroup <- rbind(ngroup1, ngroup2, ngroup3, ngroup4)
+sumngroup
+
+```
+  
